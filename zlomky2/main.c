@@ -2,7 +2,18 @@
 #include <stdlib.h>
 #include <errno.h>
 
-typedef struct {int citatel; int jmenovatel} zlomek ;
+/* Napište v jazyku C funkci zlomek soucet(const char *vstup),
+ která čte ze vstupního textového souboru vstup zlomky (resp. dvojice celých čísel),
+  vypočítává a vrací součet všech zlomků zapsaných ve vstupním souboru.
+   Pro snadnější práci se zlomky si definujte strukturovaný typ zlomek.
+   Výsledný zlomek by měl být upraven do základního tvaru.
+   Vykrácení zlomku do základního tvaru docílíte vydělením čitatele i jmenovatele jejich největším společným dělitelem,
+   který můžete určit například použitím Euklidova algoritmu.
+*/
+
+
+// sčítání zlomků
+typedef struct Zlomek { int citatel; int jmenovatel; } Zlomek ;
 
 int gcd (int u, int v) {
     int r;
@@ -15,76 +26,80 @@ int gcd (int u, int v) {
     return u;
 }
 
-zlomek soucet(const char *vstup)
-{
-    int znak = 'a';
-	int i = 0;
-	zlomek vysledek = {0, 0};
-    int temp;
-
-    FILE *f_read = fopen(vstup, "r");
-    if (f_read == NULL) {
-        if (errno) {
-            perror("Chyba pri otevirani");
-        }
-        fclose(f_read);
-        return vysledek;
-    }
-
-	int citatel_puvodni = 0;
-	int jmenovatel_puvodni = 0;
-
-    while (znak != EOF) {
-		i++;
-		printf("%i) ", i);
-		int citatel_temp = 0;
-		int jmenovatel_temp = 0;
-
-
-		// 1 radek --------------------------------------------------
-		while (znak != '/') {
-			fscanf(f_read, "%i", &temp);
-            citatel_temp = temp;
-			znak = fgetc(f_read);
-		}
-		while (!((znak == '\n') || (znak == EOF) )) {
-			fscanf(f_read, "%i", &temp);
-            jmenovatel_temp = temp;
-            znak = fgetc(f_read);
-		}
-
-		// vypocet
-		if ((citatel_puvodni == 0) && (jmenovatel_puvodni == 0)) {
-			vysledek.citatel = citatel_temp;
-			vysledek.jmenovatel = jmenovatel_temp;
-		} else {
-			vysledek.citatel = (jmenovatel_temp * citatel_puvodni) + (jmenovatel_puvodni * citatel_temp);
-			vysledek.jmenovatel = (jmenovatel_puvodni * jmenovatel_temp);
-		}
-
-		citatel_puvodni = vysledek.citatel;
-		jmenovatel_puvodni = vysledek.jmenovatel;
-
-        // dalsi --------------------------------------------------
-        if (znak == '\n') {
-            znak = fgetc(f_read);
-            if ( isdigit(znak) ) ungetc(znak, f_read);
-        }
-
-        printf("%i/%i\n", citatel_temp, jmenovatel_temp);
-    }
-
-    fclose(f_read);
-
-	// pred zkracenim
-	//printf("%i/%i\n", vysledek.citatel, vysledek.jmenovatel);
-	int spolecny_delitel = gcd(vysledek.citatel, vysledek.jmenovatel);
-	printf("\nVYSLEDEK PO ZKRACENI: %i/%i: \n", vysledek.citatel/spolecny_delitel,vysledek.jmenovatel/spolecny_delitel);
-
+Zlomek kraceni_zlomku (Zlomek z){
+    int delitel;
+    delitel = gcd(z.citatel, z.jmenovatel);
+    z.citatel = z.citatel / delitel;
+    z.jmenovatel = z.jmenovatel / delitel;
+    return z;
 }
+
+//makro pro printf zlomku
+#define print_zlomek(z) printf("%s: %d/%d\n",#z,(z).citatel, (z).jmenovatel)
+
+Zlomek soucet_zlomku (Zlomek z1, Zlomek z2)
+{
+    Zlomek vysledek;
+    vysledek.jmenovatel = z1.jmenovatel * z2.jmenovatel;
+    vysledek.citatel = (z1.citatel * z2.jmenovatel) + (z2.citatel * z1.jmenovatel);
+//  return vysledek;
+    return kraceni_zlomku (vysledek);
+    }
+
+int soucty(const char *vstup) {
+  FILE* fvstup;
+  int n;
+  Zlomek z1;
+  Zlomek zsum={0,0};
+  int done = 0;
+  int rc=0;
+
+  fvstup = fopen(vstup, "r+");
+  if ( fvstup == NULL ) {
+     perror("otevreni vstupu");
+     exit(EXIT_FAILURE);
+  }
+
+while (!done) {
+	//fgets(buf, 1024, fvstup)  ;
+	//printf("%s \n", buf)  ; continue;
+	n = fscanf(fvstup, "%d%*[ \t/]%d", &z1.citatel, &z1.jmenovatel);
+	switch (n) {
+	case 2: //zlomek
+	    //print_zlomek(z1);//ladeni
+	    //pokud jdeme poprve: zsum inicializujem na z1, jinak pricitame
+	    zsum = (zsum.citatel==0) ? z1 : soucet_zlomku(z1, zsum);
+	    break;
+	case EOF:
+	     done = 1; break;
+	case 0:
+	default:
+	     fprintf(stderr, "err: n = %d\n", n);
+	     rc=1;
+	     goto err;//spatny format vstupniho souboru!
+	     //tady to zpusobi chybu!!! done=1 => zapise zsum treba doprostred fvstup!!!
+	     //pripadne pozor na return bez fclose()! pouzijeme goto
+	}
+  }
+  fprintf(fvstup, "soucet je: %d/%d\n", zsum.citatel, zsum.jmenovatel);
+err:
+  fclose(fvstup);
+  return rc;
+}
+
+/*int main(int argc, char* argv[])
+{
+    if (argc != 2) {
+        printf("usage: %s vstup\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    soucty(argv[1]);
+    return 0;//EXIT_SUCCESS
+}*/
+
 int main ()
 {
-	soucet("vstup.txt");
+	soucty("vstup.txt");
     return 0;
 
 }
