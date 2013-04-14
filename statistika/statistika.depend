@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1365972050 source:/home/ela/ZP2_zacpal/statistika/main.c
+	<stdio.h>
+	<stdlib.h>
+	<errno.h>
+	<assert.h>
+	<math.h>
+	<stdarg.h>
+
